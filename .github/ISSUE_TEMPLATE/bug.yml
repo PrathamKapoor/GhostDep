@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a wrong or missing GhostDeps finding
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What did GhostDeps report (or miss)?
+      description: Paste the finding including its evidence (ghostdeps explain <name>).
+  - type: textarea
+    attributes:
+      label: Minimal reproduction
+      description: Smallest repo/file snippet that reproduces the issue.
+  - type: input
+    attributes:
+      label: ghostdeps version and platform
+---
+name: False positive
+description: GhostDeps claimed something it could not prove
+labels: [false-positive]
+body:
+  - type: textarea
+    attributes:
+      label: The incorrect conclusion
+  - type: textarea
+    attributes:
+      label: Why the evidence is insufficient
