@@ -1,0 +1,12 @@
+name: test
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+    steps:
+      - uses: actions/setup-python@v5
+      - run: pip install pytest
+      - run: pytest -q
