@@ -6,7 +6,9 @@ no source upload — there is no network code in the scan path at all
 
 - **Secrets are never printed.** Detectors record key names only
   (`DATABASE_URL`, `AWS_SECRET_ACCESS_KEY`); `.env` values are never read
-  into evidence, and snippets are capped at 300 chars.
+  into evidence, and snippets are capped at 300 chars. URL userinfo
+  credentials (`scheme://user:pass@…`) are redacted to `***:***@` in
+  dependency names, messages, and snippets.
 - **Repository code is never executed during `scan`.** Only explicit commands
   run anything: `ghostdeps trace -- <cmd>` runs exactly the command you pass;
   `verify` performs read-only presence checks.

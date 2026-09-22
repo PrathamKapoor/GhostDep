@@ -15,6 +15,9 @@ Initial public release:
 - External executable, env var (key-only), service, network, Docker, CI analysis
 - Evidence graph with deterministic confidence
   (`UNKNOWN < INFERRED < SUPPORTED < STRONG < VERIFIED`) and ghost classification
+- URL credential redaction (`user:pass@` → `***:***@`) in names, messages,
+  and snippets; repo-relative executables are not reported as system ghosts
+- Config parse errors are surfaced (never silent default fallback)
 - `scan`, `why`, `explain`, `trace`, `baseline`/`diff`, `doctor`, `verify`,
   `portable`, `generate contract|docker|devcontainer`
 - terminal / versioned JSON / markdown / SARIF output; documented exit codes

@@ -24,6 +24,7 @@ TRACK (baseline.py) · VERIFY (verify.py) · EXPLAIN (cli why/explain)
 | `analyzers/python_source.py` | Real AST analysis for Python (imports, subprocess, env, URLs, services, paths) |
 | `analyzers/js_generic.py` | Heuristic analysis for JS/TS and other languages (explicitly weaker confidence) |
 | `analyzers/env_services.py` | dotenv, services, network text, Dockerfile, Compose, GitHub Actions |
+| `util.py` | Shared pure helpers: executable-path normalization, URL credential redaction |
 | `models.py` | Evidence-graph data model (`Dependency`, `Evidence`, `ScanResult`) |
 | `fusion.py` | Merge, deterministic confidence promotion, presence, classification |
 | `scanner.py` | Orchestration; one bad file never kills a scan; test-only marking |
