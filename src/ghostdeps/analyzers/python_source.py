@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import ast
 import sys
+import warnings
 from pathlib import Path
 
 from ghostdeps.analyzers.base import evidence_file, own_package_names, safe_read
 from ghostdeps.models import Dependency, Evidence
+from ghostdeps.util import normalize_executable, redact_url_credentials
 
 # Standard-library modules are never third-party PACKAGE dependencies.
 # (sys.stdlib_module_names exists on Python 3.10+.)
@@ -48,7 +50,9 @@ def analyze(path: Path, root: Path) -> list[Dependency]:
     if not text:
         return []
     try:
-        tree = ast.parse(text, filename=rel)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SyntaxWarning)
+            tree = ast.parse(text, filename=rel)
     except SyntaxError:
         return []
     visitor = _Visitor(rel, own_package_names(str(root)))
@@ -172,16 +176,21 @@ class _Visitor(ast.NodeVisitor):
         if dotted in {f"subprocess.{f}" for f in SUBPROCESS_FUNCS} or dotted in SUBPROCESS_FUNCS:
             exe = self._first_exec_arg(node)
             if exe:
-                self._emit(
-                    exe,
-                    "SYSTEM_BINARY",
-                    node,
-                    "python-ast",
-                    "static-subprocess",
-                    f"subprocess invocation of '{exe}'",
-                    "STRONG",
-                    snippet=f"{dotted}({exe} ...)",
-                )
+                resolved = normalize_executable(exe)
+                if resolved is None:
+                    # Repo-relative script path: not an external system binary.
+                    pass
+                else:
+                    self._emit(
+                        resolved,
+                        "SYSTEM_BINARY",
+                        node,
+                        "python-ast",
+                        "static-subprocess",
+                        f"subprocess invocation of '{resolved}'",
+                        "STRONG",
+                        snippet=f"{dotted}({resolved} ...)",
+                    )
             else:
                 self._emit(
                     "dynamic-subprocess",
@@ -197,16 +206,18 @@ class _Visitor(ast.NodeVisitor):
             arg = self._const_str(node.args[0]) if node.args else None
             if arg and arg.strip():
                 first = arg.strip().split()[0].strip("\"'")
-                self._emit(
-                    first,
-                    "SYSTEM_BINARY",
-                    node,
-                    "python-ast",
-                    "static-shell",
-                    f"shell execution references '{first}'",
-                    "SUPPORTED",
-                    snippet=arg[:200],
-                )
+                resolved = normalize_executable(first)
+                if resolved is not None:
+                    self._emit(
+                        resolved,
+                        "SYSTEM_BINARY",
+                        node,
+                        "python-ast",
+                        "static-shell",
+                        f"shell execution references '{resolved}'",
+                        "SUPPORTED",
+                        snippet=redact_url_credentials(arg[:200]),
+                    )
         # os.getenv("X") / os.environ["X"] / os.environ.get("X")
         if dotted in {"os.getenv", "os.environ.get", "getenv"}:
             key = self._const_str(node.args[0]) if node.args else None
@@ -236,14 +247,14 @@ class _Visitor(ast.NodeVisitor):
                 if is_namespace_url(url) or not is_plausible_url(url):
                     continue  # namespace identifier or regex fragment, not an endpoint
                 self._emit(
-                    url,
+                    redact_url_credentials(url),
                     "NETWORK_ENDPOINT",
                     node,
                     "python-ast",
                     "static-url",
-                    f"URL literal references '{url}'",
+                    f"URL literal references '{redact_url_credentials(url)}'",
                     "SUPPORTED",
-                    snippet=s[:200],
+                    snippet=redact_url_credentials(s[:200]),
                 )
             for svc, _marker in (
                 ("PostgreSQL", "postgres"),
@@ -277,7 +288,7 @@ class _Visitor(ast.NodeVisitor):
                         "connection-string",
                         f"connection string suggests {svc} (INFERRED, not proven)",
                         "INFERRED",
-                        snippet=s[:120],
+                        snippet=redact_url_credentials(s[:120]),
                     )
                     break
             # filesystem access hints

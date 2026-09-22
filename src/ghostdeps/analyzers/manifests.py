@@ -92,11 +92,7 @@ def analyze_manifest(path: Path, root: Path) -> tuple[list[Dependency], str | No
         if "docker-compose" in name or name in ("compose.yaml", "compose.yml"):
             return ([], None)  # handled by DockerAnalyzer
     except Exception as exc:  # never crash a scan on one manifest
-        return (
-            ([], None)
-            if False
-            else ([], f"{rel}: manifest parse failed ({exc}); treated as UNKNOWN")
-        )
+        return ([], f"{rel}: manifest parse failed ({exc}); treated as UNKNOWN")
     # Unknown manifest-like file explicitly reported by caller.
     return (
         [],

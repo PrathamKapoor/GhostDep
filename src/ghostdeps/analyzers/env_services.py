@@ -10,6 +10,7 @@ from ghostdeps.analyzers.python_source import _looks_secret
 from ghostdeps.analyzers.python_source import is_namespace_url as _is_ns
 from ghostdeps.analyzers.python_source import is_plausible_url as _is_url
 from ghostdeps.models import Dependency, Evidence
+from ghostdeps.util import redact_url_credentials
 
 
 def _emit(detector, kind, name, dtype, rel, line, msg, conf, snippet=None):
@@ -50,7 +51,9 @@ def analyze_dotenv(path: Path, root: Path) -> list[Dependency]:
         s = line.strip()
         if not s or s.startswith("#") or "=" not in s:
             continue
-        key = s.split("=", 1)[0].strip().strip("export ").strip()
+        key = s.split("=", 1)[0].strip()
+        if key.startswith("export "):
+            key = key[len("export ") :].strip()
         if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", key):
             dtype = "CREDENTIAL_REFERENCE" if _looks_secret(key) else "ENVIRONMENT_VARIABLE"
             d = _emit(
@@ -141,7 +144,7 @@ def infer_service_from_text(text: str, rel: str, detector: str) -> list[Dependen
                 f"'{svc}' inferred from configuration/text match "
                 f"(service requirement INFERRED, not proven)",
                 "INFERRED",
-                snippet=m.group(0)[:120],
+                snippet=redact_url_credentials(m.group(0)[:120]),
             )
             out.append(d)
     return out
@@ -191,13 +194,13 @@ def analyze_network_text(path: Path, root: Path) -> list[Dependency]:
                     _emit(
                         "network-scan",
                         "static-url",
-                        u,
+                        redact_url_credentials(u),
                         "NETWORK_ENDPOINT",
                         rel,
                         i,
-                        f"network reference '{u}'",
+                        f"network reference '{redact_url_credentials(u)}'",
                         "SUPPORTED",
-                        snippet=line.strip()[:200],
+                        snippet=redact_url_credentials(line.strip()[:200]),
                     )
                 )
         for m in re.finditer(

@@ -18,6 +18,7 @@ from ghostdeps.analyzers.python_source import (
     is_plausible_url,
 )
 from ghostdeps.models import Dependency, Evidence
+from ghostdeps.util import normalize_executable, redact_url_credentials
 
 JS_EXEC_RE = re.compile(
     r"""(?:child_process\s*\.\s*(exec|execSync|spawn|spawnSync|execFile|execFileSync|fork)|
@@ -144,17 +145,21 @@ def analyze_js(path: Path, root: Path) -> list[Dependency]:
                 snippet=line.strip()[:200],
             )
         for m in JS_EXEC_ARG.finditer(line):
-            cmd = m.group(1).strip().split()[0]
-            if cmd and len(cmd) < 100 and not cmd.startswith((".", "/")) or "/" in cmd:
-                emit(
-                    cmd,
-                    "SYSTEM_BINARY",
-                    i,
-                    "static-subprocess",
-                    f"child_process invocation of '{cmd}' (heuristic)",
-                    "SUPPORTED",
-                    snippet=line.strip()[:200],
-                )
+            cmd = m.group(1).strip().split()[0] if m.group(1).strip() else ""
+            if not cmd or len(cmd) >= 100:
+                continue
+            resolved = normalize_executable(cmd)
+            if resolved is None:
+                continue  # repo-relative script path: not an external system binary
+            emit(
+                resolved,
+                "SYSTEM_BINARY",
+                i,
+                "static-subprocess",
+                f"child_process invocation of '{resolved}' (heuristic)",
+                "SUPPORTED",
+                snippet=line.strip()[:200],
+            )
         if JS_EXEC_RE.search(line) and not JS_EXEC_ARG.search(line):
             emit(
                 "dynamic-subprocess",
@@ -175,19 +180,19 @@ def analyze_js(path: Path, root: Path) -> list[Dependency]:
                     "static-env",
                     f"process.env access '{key}' (heuristic)",
                     "SUPPORTED",
-                    snippet=line.strip()[:200],
+                    snippet=redact_url_credentials(line.strip()[:200]),
                 )
         for m in URL_RE.finditer(line):
             u = m.group(0).rstrip(".,;)")
             if len(u) < 300 and not is_namespace_url(u) and is_plausible_url(u):
                 emit(
-                    u,
+                    redact_url_credentials(u),
                     "NETWORK_ENDPOINT",
                     i,
                     "static-url",
-                    f"URL literal '{u}' (heuristic)",
+                    f"URL literal '{redact_url_credentials(u)}' (heuristic)",
                     "SUPPORTED",
-                    snippet=line.strip()[:200],
+                    snippet=redact_url_credentials(line.strip()[:200]),
                 )
     return deps
 
@@ -224,16 +229,16 @@ def analyze_generic(path: Path, root: Path) -> list[Dependency]:
 
     for i, line in enumerate(text.splitlines(), 1):
         if GENERIC_SUBPROCESS.search(line):
-            m = re.search(r'"([^"]+)"', line)
-            if m:
-                first = m.group(1).strip().split()[0]
-                if first and len(first) < 120:
+            qm = re.search(r'"([^"]+)"', line)
+            if qm:
+                resolved = normalize_executable(qm.group(1).strip().split()[0])
+                if resolved is not None and len(resolved) < 120:
                     emit(
-                        first,
+                        resolved,
                         "SYSTEM_BINARY",
                         i,
                         "static-subprocess",
-                        f"native execution references '{first}' (heuristic)",
+                        f"native execution references '{resolved}' (heuristic)",
                         "SUPPORTED",
                         snippet=line.strip()[:200],
                     )
@@ -255,7 +260,7 @@ def analyze_generic(path: Path, root: Path) -> list[Dependency]:
                 "static-env",
                 f"env access '{m.group(1)}' (heuristic)",
                 "SUPPORTED",
-                snippet=line.strip()[:200],
+                snippet=redact_url_credentials(line.strip()[:200]),
             )
         for m in GENERIC_ENV2.finditer(line):
             emit(
@@ -265,19 +270,19 @@ def analyze_generic(path: Path, root: Path) -> list[Dependency]:
                 "static-env",
                 f"env access '{m.group(1)}' (heuristic)",
                 "SUPPORTED",
-                snippet=line.strip()[:200],
+                snippet=redact_url_credentials(line.strip()[:200]),
             )
         for m in URL_RE.finditer(line):
             u = m.group(0).rstrip(".,;)")
             if len(u) < 300 and not is_namespace_url(u) and is_plausible_url(u):
                 emit(
-                    u,
+                    redact_url_credentials(u),
                     "NETWORK_ENDPOINT",
                     i,
                     "static-url",
-                    f"URL literal '{u}' (heuristic)",
+                    f"URL literal '{redact_url_credentials(u)}' (heuristic)",
                     "SUPPORTED",
-                    snippet=line.strip()[:200],
+                    snippet=redact_url_credentials(line.strip()[:200]),
                 )
         _ = FS_HINT
     return deps
