@@ -85,7 +85,9 @@ def main(argv: list[str] | None = None) -> int:
     if not root.exists():
         print(f"ghostdeps: error: project root does not exist: {root}", file=sys.stderr)
         return 2
-    config, _cfg_path = Config.load(root)
+    config, _cfg_path, cfg_error = Config.load(root)
+    if cfg_error:
+        print(f"ghostdeps: warning: {cfg_error}", file=sys.stderr)
     offline = bool(args.offline or config.offline)
 
     cmd = args.command or "scan"

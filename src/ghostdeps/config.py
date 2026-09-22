@@ -21,7 +21,10 @@ class Config:
     output_format: str = "terminal"
 
     @classmethod
-    def load(cls, root: Path) -> tuple[Config, Path | None]:
+    def load(cls, root: Path) -> tuple[Config, Path | None, str | None]:
+        """Return (config, path, error). `error` is set when a config file
+        exists but could not be parsed — callers must surface it, never
+        silently fall back to defaults."""
         for name in CONFIG_FILENAMES:
             candidate = root / name
             if candidate.is_file():
@@ -32,10 +35,16 @@ class Config:
                         data = _parse_simple_toml(
                             candidate.read_text(encoding="utf-8", errors="replace")
                         )
-                    return (cls.from_dict(data), candidate)
-                except Exception:
-                    return (cls(), None)
-        return (cls(), None)
+                    if not isinstance(data, dict):
+                        raise ValueError("configuration root must be a table/object")
+                    return (cls.from_dict(data), candidate, None)
+                except Exception as exc:
+                    return (
+                        cls(),
+                        candidate,
+                        f"failed to parse {candidate.name} ({exc}); using default configuration",
+                    )
+        return (cls(), None, None)
 
     @classmethod
     def from_dict(cls, data: dict) -> Config:

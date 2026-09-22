@@ -45,6 +45,13 @@ class DiscoveredRepo:
     total_files_seen: int = 0
 
 
+def relative_to_root(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(path).replace("\\", "/")
+
+
 def discover(root: Path, extra_ignores: list[str] | None = None) -> DiscoveredRepo:
     """Recursively list files under root, skipping generated/vendor dirs."""
     root = root.resolve()
@@ -67,10 +74,3 @@ def discover(root: Path, extra_ignores: list[str] | None = None) -> DiscoveredRe
     return DiscoveredRepo(
         root=root, files=found, skipped_dirs=sorted(set(skipped)), total_files_seen=seen
     )
-
-
-def relative_to_root(path: Path, root: Path) -> str:
-    try:
-        return str(path.resolve().relative_to(root.resolve()))
-    except ValueError:
-        return str(path)

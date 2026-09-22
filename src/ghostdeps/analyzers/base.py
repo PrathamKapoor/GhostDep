@@ -17,10 +17,11 @@ class Analyzer(Protocol):
 
 
 def evidence_file(path: Path, root: Path) -> str:
+    """Repository-relative evidence path with forward slashes (stable across OSes)."""
     try:
-        return str(path.resolve().relative_to(root.resolve()))
+        return path.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
-        return str(path)
+        return path.as_posix() if not path.is_absolute() else str(path).replace("\\", "/")
 
 
 def safe_read(path: Path, limit_bytes: int = 1_000_000) -> str:

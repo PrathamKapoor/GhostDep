@@ -5,8 +5,15 @@ from __future__ import annotations
 import platform
 import shutil
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
+
+
+def strace_log_path() -> Path:
+    """Per-user temp path for strace output (never a hardcoded /tmp)."""
+    return Path(tempfile.gettempdir()) / f"ghostdeps-strace-{Path.cwd().name}.log"
 
 
 @dataclass
@@ -96,6 +103,7 @@ class GenericTracer(RuntimeTracer):
                 "only top-level process execution is observed, "
                 "nested child processes are NOT fully traced"
             )
+        strace_log = strace_log_path()
         wrapped = (
             (
                 [
@@ -104,7 +112,7 @@ class GenericTracer(RuntimeTracer):
                     "-e",
                     "trace=execve,connect,openat",
                     "-o",
-                    "/tmp/ghostdeps-strace.log",
+                    str(strace_log),
                 ]
                 + command
             )
@@ -118,7 +126,7 @@ class GenericTracer(RuntimeTracer):
             code: int | None = proc.returncode
             events.append(TraceEvent(kind="exit", message=f"exit status {proc.returncode}"))
             if use_strace:
-                events.extend(_parse_strace_log())
+                events.extend(_parse_strace_log(strace_log))
         except FileNotFoundError:
             code = None
             warnings.append(
@@ -174,12 +182,13 @@ def get_tracer() -> RuntimeTracer:
     return GenericTracer()
 
 
-def _parse_strace_log() -> list[TraceEvent]:
+def _parse_strace_log(log_path: Path | None = None) -> list[TraceEvent]:
     import re
 
+    path = log_path or strace_log_path()
     events: list[TraceEvent] = []
     try:
-        with open("/tmp/ghostdeps-strace.log", encoding="utf-8", errors="replace") as fh:
+        with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh.readlines()[-500:]:
                 m = re.search(r'execve\("([^"]+)"', line)
                 if m:

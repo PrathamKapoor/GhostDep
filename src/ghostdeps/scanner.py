@@ -96,9 +96,9 @@ def run_scan(root: Path, config: Config | None = None, offline: bool = False) ->
 
 def _rel(path: Path, root: Path) -> str:
     try:
-        return str(path.relative_to(root))
+        return path.relative_to(root).as_posix()
     except ValueError:
-        return str(path)
+        return str(path).replace("\\", "/")
 
 
 def _ignored(rel: str, patterns: list[str]) -> bool:

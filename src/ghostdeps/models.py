@@ -64,6 +64,12 @@ def stronger(a: str, b: str) -> str:
     return a if CONFIDENCE_RANK[a] >= CONFIDENCE_RANK[b] else b
 
 
+def _tool_version() -> str:
+    from ghostdeps import __version__
+
+    return __version__
+
+
 # ---------------------------------------------------------------------------
 # Evidence
 # ---------------------------------------------------------------------------
@@ -198,7 +204,7 @@ class ScanResult:
     warnings: list[str] = field(default_factory=list)
     unsupported: list[str] = field(default_factory=list)
     offline: bool = False
-    tool_version: str = "0.1.0"
+    tool_version: str = field(default_factory=_tool_version)
     schema_version: str = "1.0.0"
     generated_at: float = field(default_factory=lambda: time.time())
 

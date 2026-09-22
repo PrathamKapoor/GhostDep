@@ -22,7 +22,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from ghostdeps.models import CONFIDENCE_RANK, Dependency
+from ghostdeps.models import CONFIDENCE_RANK, Dependency, Evidence
 
 DOC_DETECTORS = {"readme-scan", "docs-scan"}
 INDEPENDENT_KINDS = {
@@ -153,8 +153,6 @@ def check_presence(deps: list[Dependency], root: Path) -> None:
             if found:
                 dep.present = "YES"
                 dep.states.add("PRESENT")
-                from ghostdeps.models import Evidence
-
                 dep.add_evidence(
                     Evidence(
                         detector="presence",
@@ -182,9 +180,6 @@ def check_presence(deps: list[Dependency], root: Path) -> None:
             dep.present = "YES" if p.exists() else "UNKNOWN"
         elif dep.type == "PACKAGE":
             dep.present = "UNKNOWN"  # resolved properly by verify step
-        else:
-            if dep.present == "UNKNOWN":
-                dep.present = "UNKNOWN"
 
 
 def classify(deps: list[Dependency]) -> None:
