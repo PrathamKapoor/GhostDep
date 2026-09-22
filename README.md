@@ -56,6 +56,22 @@ pip install ghostdeps        # core has zero runtime dependencies
 
 Requires Python 3.10+. Works fully offline: `ghostdeps scan --offline`.
 
+No API keys or accounts are required. The tool is local-only: your own
+environment variables and repository files are enough. Optional runtime
+tracing runs only the command you pass explicitly.
+
+## Development
+
+```bash
+git clone https://github.com/PrathamKapoor/GhostDep.git
+cd GhostDep
+pip install -e ".[dev]"
+ruff check src tests
+ruff format --check src tests
+python -m pytest tests/ -q
+python -m build          # optional: wheel + sdist into dist/
+```
+
 ## Commands
 
 | Command | Purpose |

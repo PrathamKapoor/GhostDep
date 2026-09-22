@@ -192,7 +192,7 @@ def render_sarif(result: ScanResult) -> str:
                     "driver": {
                         "name": "ghostdeps",
                         "version": result.tool_version,
-                        "informationUri": "https://github.com/example/ghostdeps",
+                        "informationUri": "https://github.com/PrathamKapoor/GhostDep",
                         "rules": rules,
                     }
                 },
