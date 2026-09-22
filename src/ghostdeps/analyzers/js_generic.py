@@ -12,7 +12,11 @@ import re
 from pathlib import Path
 
 from ghostdeps.analyzers.base import evidence_file, safe_read
-from ghostdeps.analyzers.python_source import _looks_secret, is_namespace_url
+from ghostdeps.analyzers.python_source import (
+    _looks_secret,
+    is_namespace_url,
+    is_plausible_url,
+)
 from ghostdeps.models import Dependency, Evidence
 
 JS_EXEC_RE = re.compile(
@@ -175,7 +179,7 @@ def analyze_js(path: Path, root: Path) -> list[Dependency]:
                 )
         for m in URL_RE.finditer(line):
             u = m.group(0).rstrip(".,;)")
-            if len(u) < 300 and not is_namespace_url(u):
+            if len(u) < 300 and not is_namespace_url(u) and is_plausible_url(u):
                 emit(
                     u,
                     "NETWORK_ENDPOINT",
@@ -265,7 +269,7 @@ def analyze_generic(path: Path, root: Path) -> list[Dependency]:
             )
         for m in URL_RE.finditer(line):
             u = m.group(0).rstrip(".,;)")
-            if len(u) < 300 and not is_namespace_url(u):
+            if len(u) < 300 and not is_namespace_url(u) and is_plausible_url(u):
                 emit(
                     u,
                     "NETWORK_ENDPOINT",

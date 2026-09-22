@@ -34,3 +34,9 @@ Detected from `child_process.*`, `subprocess.*`, `os.system/popen`,
 and `package.json` scripts. Literal commands resolve to `SYSTEM_BINARY`
 (`STRONG` via AST); non-literal commands become `BEHAVIOR/dynamic-subprocess`
 (`UNKNOWN` executable, `INFERRED`) instead of a guessed name.
+Dynamic pseudo-nodes are never classified `GHOST`.
+
+Noise guards (documented, tested): stdlib imports and the repo's own
+packages (src layout + pyproject name) are never `PACKAGE` findings;
+regex/template fragments are rejected as URLs; XML-namespace identifiers
+are names, not endpoints.

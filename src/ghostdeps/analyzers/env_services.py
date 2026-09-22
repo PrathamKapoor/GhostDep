@@ -8,6 +8,7 @@ from pathlib import Path
 from ghostdeps.analyzers.base import evidence_file, safe_read
 from ghostdeps.analyzers.python_source import _looks_secret
 from ghostdeps.analyzers.python_source import is_namespace_url as _is_ns
+from ghostdeps.analyzers.python_source import is_plausible_url as _is_url
 from ghostdeps.models import Dependency, Evidence
 
 
@@ -185,7 +186,7 @@ def analyze_network_text(path: Path, root: Path) -> list[Dependency]:
             re.I,
         ):
             u = m.group(0).rstrip(".,;)")
-            if 4 < len(u) < 300 and not _is_ns(u):
+            if 4 < len(u) < 300 and not _is_ns(u) and _is_url(u):
                 out.append(
                     _emit(
                         "network-scan",

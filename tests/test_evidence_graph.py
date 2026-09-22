@@ -29,6 +29,21 @@ def test_stdlib_imports_are_not_packages():
     assert "subprocess" not in pkgs, "stdlib modules must not be reported as PACKAGE deps"
 
 
+def test_own_package_imports_are_not_packages(tmp_path):
+    from ghostdeps.analyzers.python_source import analyze as py_analyze
+
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "demo-pkg"\n')
+    src = tmp_path / "src" / "demo_pkg"
+    src.mkdir(parents=True)
+    (src / "__init__.py").write_text("")
+    mod = src / "cli.py"
+    mod.write_text("from demo_pkg import core\nimport requests\n")
+    deps = py_analyze(mod, tmp_path)
+    pkgs = {d.name for d in deps if d.type == "PACKAGE"}
+    assert "demo_pkg" not in pkgs
+    assert "requests" in pkgs
+
+
 def test_unused_dependency():
     r = scan("unused_dep")
     lodash = [d for d in r.dependencies if d.name == "lodash"]

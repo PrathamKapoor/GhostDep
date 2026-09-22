@@ -6,7 +6,7 @@ import ast
 import sys
 from pathlib import Path
 
-from ghostdeps.analyzers.base import evidence_file, safe_read
+from ghostdeps.analyzers.base import evidence_file, own_package_names, safe_read
 from ghostdeps.models import Dependency, Evidence
 
 # Standard-library modules are never third-party PACKAGE dependencies.
@@ -51,14 +51,15 @@ def analyze(path: Path, root: Path) -> list[Dependency]:
         tree = ast.parse(text, filename=rel)
     except SyntaxError:
         return []
-    visitor = _Visitor(rel)
+    visitor = _Visitor(rel, own_package_names(str(root)))
     visitor.visit(tree)
     return visitor.deps
 
 
 class _Visitor(ast.NodeVisitor):
-    def __init__(self, rel: str) -> None:
+    def __init__(self, rel: str, own_names: frozenset = frozenset()) -> None:
         self.rel = rel
+        self.own_names = {n.lower() for n in own_names}
         self.deps: list[Dependency] = []
 
     # -- helpers ---------------------------------------------------------
@@ -105,7 +106,7 @@ class _Visitor(ast.NodeVisitor):
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
             top = alias.name.split(".")[0]
-            if top not in STDLIB_MODULES:
+            if top not in STDLIB_MODULES and top.lower() not in self.own_names:
                 self._emit(
                     top,
                     "PACKAGE",
@@ -132,7 +133,7 @@ class _Visitor(ast.NodeVisitor):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         if node.module:
             top = node.module.split(".")[0]
-            if top not in STDLIB_MODULES:
+            if top not in STDLIB_MODULES and top.lower() not in self.own_names:
                 self._emit(
                     top,
                     "PACKAGE",
@@ -232,8 +233,8 @@ class _Visitor(ast.NodeVisitor):
         if isinstance(node.value, str):
             s = node.value
             for url in _find_urls(s):
-                if is_namespace_url(url):
-                    continue  # XML namespace identifier, not a network dependency
+                if is_namespace_url(url) or not is_plausible_url(url):
+                    continue  # namespace identifier or regex fragment, not an endpoint
                 self._emit(
                     url,
                     "NETWORK_ENDPOINT",
@@ -339,6 +340,12 @@ NAMESPACE_MARKERS = ("maven.apache.org/pom", "www.w3.org/", "schemas.xmlsoap.org
 def is_namespace_url(url: str) -> bool:
     low = url.lower()
     return any(m in low for m in NAMESPACE_MARKERS)
+
+
+def is_plausible_url(url: str) -> bool:
+    """Reject regex/template fragments (contain \\, [, ], |, ^) that the URL
+    pattern can match inside pattern literals and docs."""
+    return not any(ch in url for ch in ("\\", "[", "]", "|", "^", "{", "}"))
 
 
 def _find_urls(s: str) -> list[str]:
